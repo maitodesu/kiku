@@ -19,6 +19,7 @@ const Lazy = {
   Settings: lazy(async () => ({ default: (await import("#/src/lazy")).Settings })),
   CardEnd: lazy(async () => ({ default: (await import("#/src/lazy")).CardEnd })),
   HeaderMain: lazy(async () => ({ default: (await import("#/src/lazy")).HeaderMain })),
+  TopSectionEnd: lazy(async () => ({ default: (await import("#/src/lazy")).TopSectionEnd })),
   BackFooter: lazy(async () => ({ default: (await import("#/src/lazy")).BackFooter })),
   AudioButtons: lazy(async () => ({ default: (await import("#/src/lazy")).AudioButtons })),
   AudioElements: lazy(async () => ({ default: (await import("#/src/lazy")).AudioElements })),
@@ -137,6 +138,7 @@ export function Back(props: { onExitNested?: () => void }) {
             </div>
             {$card.ready && <FieldGroupPaginationSection />}
           </div>
+          {$card.ready && <Lazy.TopSectionEnd />}
           {$card.ready && <Lazy.BackBody />}
           {$card.ready && (
             <>

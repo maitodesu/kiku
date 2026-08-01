@@ -22,6 +22,7 @@ const Lazy = {
   Expression: lazy(async () => ({ default: (await import("#/src/lazy")).Expression })),
   Settings: lazy(async () => ({ default: (await import("#/src/lazy")).Settings })),
   CardEnd: lazy(async () => ({ default: (await import("#/src/lazy")).CardEnd })),
+  TopSectionEnd: lazy(async () => ({ default: (await import("#/src/lazy")).TopSectionEnd })),
 };
 
 export function Front() {
@@ -112,6 +113,7 @@ export function Front() {
             </div>
             {$card.ready && !$hidden() && <FieldGroupPaginationSection />}
           </div>
+          {$card.ready && <Lazy.TopSectionEnd />}
           <div
             class="flex flex-col gap-4 items-center text-center justify-center"
             classList={{
