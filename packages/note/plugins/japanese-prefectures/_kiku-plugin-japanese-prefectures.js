@@ -169,46 +169,47 @@ async function fetchSvg() {
 }
 
 /**
- * @param {{
- *   ctx: import("#/plugins/plugin-types").Ctx;
- * }} props
+ * @typedef {import("#/plugins/plugin-types").Ctx} Ctx
+ */
+
+/**
+ * @param {{ ctx: Ctx; }} props
  */
 export function JapaneseMap(props) {
-  const { ctx } = props;
-  const { h, createMemo, Suspense, Show, useAnkiFieldContext, useCardContext } = ctx;
+  const { html, createMemo, Suspense, Show, useAnkiFieldContext, useCardContext } = props.ctx;
   const { $initialSide } = useCardContext();
   const { $ankiFields } = useAnkiFieldContext();
 
-  const $code = createMemo(
-    () =>
+  const $code = createMemo(() => {
+    return (
       findPrefectureCode($ankiFields.Expression) ??
-      findPrefectureCode($ankiFields.ExpressionReading),
-  );
+      findPrefectureCode($ankiFields.ExpressionReading)
+    );
+  });
 
-  return h(
-    Show,
-    { when: () => $initialSide() === "back" && $code() },
-    h(
-      Suspense,
-      {
-        fallback: h("div", { class: "flex flex-col items-center gap-1" }, [
-          h("span", { class: "loading loading-dots text-base-content-calm" }),
-        ]),
-      },
-      h($JapaneseMap, { ctx, code: $code })(),
-    )(),
-  )();
+  const $showMap = createMemo(() => $initialSide() === "back" && $code());
+
+  function LoadingFallback() {
+    return html`<div class="flex flex-col items-center gap-1">
+      <span class="loading loading-dots text-base-content-calm"></span>
+    </div>`;
+  }
+
+  return html`
+    <${Show} when=${$showMap}>
+      <${Suspense} fallback=${LoadingFallback}>
+        <${JapaneseMapContent} ctx=${props.ctx} code=${$code}><//>
+      <//>
+    <//>
+  `;
 }
 
 /**
- * @param {{
- *   ctx: import("#/plugins/plugin-types").Ctx;
- *   code: string | null;
- * }} props
+ * @param {{ ctx: Ctx; code: string | null }} props
  */
-function $JapaneseMap(props) {
+function JapaneseMapContent(props) {
   const {
-    h,
+    html,
     createMemo,
     createEffect,
     createSignal,
@@ -220,17 +221,20 @@ function $JapaneseMap(props) {
   } = props.ctx;
   const { $general } = useGeneralContext();
 
-  const [svgText] = createResource(() => (props.code ? true : false), fetchSvg);
+  const $layoutRef = createMemo(() => $general.layoutRef);
+  const $code = createMemo(() => props.code);
+
+  const [$$svg] = createResource(() => ($code() ? true : false), fetchSvg);
 
   const $svg = createMemo(() => {
-    const text = svgText();
+    const text = $$svg();
     if (!text) return null;
     g.__japanesePrefecturesProcessedSvg ??= processSvg(text);
     return g.__japanesePrefecturesProcessedSvg;
   });
 
   const [$svgContainerRef, $setSvgContainerRef] = createSignal(
-    /** @type {HTMLDivElement | null} */ (null),
+    /** @type {HTMLDivElement | null} - */ (null),
   );
 
   createEffect(() => {
@@ -244,8 +248,28 @@ function $JapaneseMap(props) {
   const $hoverPrefecture = createMemo(() => findPrefectureByCode($hoverCode()));
   const [$hoverRegion, $setHoverRegion] = createSignal(/** @type {string | null} */ (null));
 
+  const $hoverKanji = createMemo(() => $hoverPrefecture()?.[1]);
+  const $hoverKana = createMemo(() => $hoverPrefecture()?.[2]);
+  /** @param {string | null} region */
+  function regionInfo(region) {
+    return region ? REGIONS[region] : null;
+  }
+
+  const $hoverRegionInfo = createMemo(() => regionInfo($hoverRegion()));
+  const $hoverRegionName = createMemo(() => $hoverRegionInfo()?.[0]);
+  const $hoverRegionReading = createMemo(() => $hoverRegionInfo()?.[1]);
+
   const [$activeCode, $setActiveCode] = createSignal(/** @type {string | null} */ (null));
   const $activePrefecture = createMemo(() => findPrefectureByCode($activeCode()));
+
+  const $activeKanji = createMemo(() => $activePrefecture()?.[1]);
+  const $wikipediaUrl = createMemo(
+    () => `https://ja.wikipedia.org/wiki/${$activePrefecture()?.[1]}`,
+  );
+  const $mapsUrl = createMemo(
+    () => `https://www.google.com/maps/search/${$activePrefecture()?.[1]}`,
+  );
+  const $fudokiUrl = createMemo(() => `https://fudoki.app/prefecture/${$activePrefecture()?.[3]}`);
 
   const [$dialogRef, $setDialogRef] = createSignal(/** @type {HTMLDialogElement | null} */ (null));
 
@@ -255,44 +279,50 @@ function $JapaneseMap(props) {
     if (!svgContainerRef || !svg) return;
     const root = svgContainerRef?.querySelector("svg");
     if (!root) return;
-    const onEnter = (/** @type {Event} */ e) => {
-      const el = /** @type {SVGGElement} */ (e.currentTarget);
-      el.classList.add("hover");
-      $setHoverCode(el.dataset.code ?? null);
-      $setHoverRegion(regionKeyOf(el));
-    };
-    const onLeave = (/** @type {Event} */ e) => {
-      const el = /** @type {SVGGElement} */ (e.currentTarget);
-      el.classList.remove("hover");
-      $setHoverCode(null);
-      $setHoverRegion(null);
-    };
-    const onClick = (/** @type {Event} */ e) => {
-      const el = /** @type {SVGGElement} */ (e.currentTarget);
-      $setActiveCode(el.dataset.code ?? null);
-      $dialogRef()?.showModal();
-    };
     const prefectures = root.querySelectorAll(".prefecture");
     for (const el of prefectures) {
-      el.addEventListener("mouseenter", onEnter);
-      el.addEventListener("mouseleave", onLeave);
-      el.addEventListener("click", onClick);
+      el.addEventListener("mouseenter", onHoverEnter);
+      el.addEventListener("mouseleave", onHoverLeave);
+      el.addEventListener("click", onPrefectureClick);
     }
     onCleanup(() => {
       for (const el of prefectures) {
-        el.removeEventListener("mouseenter", onEnter);
-        el.removeEventListener("mouseleave", onLeave);
-        el.removeEventListener("click", onClick);
+        el.removeEventListener("mouseenter", onHoverEnter);
+        el.removeEventListener("mouseleave", onHoverLeave);
+        el.removeEventListener("click", onPrefectureClick);
       }
     });
   });
 
+  /** @param {Event} e - */
+  function onHoverEnter(e) {
+    const el = /** @type {SVGGElement} */ (e.currentTarget);
+    el.classList.add("hover");
+    $setHoverCode(el.dataset.code ?? null);
+    $setHoverRegion(regionKeyOf(el));
+  }
+
+  /** @param {Event} e - */
+  function onHoverLeave(e) {
+    const el = /** @type {SVGGElement} */ (e.currentTarget);
+    el.classList.remove("hover");
+    $setHoverCode(null);
+    $setHoverRegion(null);
+  }
+
+  /** @param {Event} e - */
+  function onPrefectureClick(e) {
+    const el = /** @type {SVGGElement} */ (e.currentTarget);
+    $setActiveCode(el.dataset.code ?? null);
+    $dialogRef()?.showModal();
+  }
+
   createEffect(() => {
     const svgContainerRef = $svgContainerRef();
     const svg = $svg();
-    if (!svgContainerRef || !svg) return;
+    const code = $code();
+    if (!svgContainerRef || !svg || !code) return;
     const root = svgContainerRef?.querySelector("svg");
-    const code = props.code;
     if (!root || !code) return;
     const gEl = root.querySelector(`[data-code="${code}"]`);
     let /** @type string | null | undefined */ originalFill;
@@ -313,67 +343,68 @@ function $JapaneseMap(props) {
 
   const [$large, $setLarge] = createSignal(false);
   const $largeLabel = createMemo(() => ($large() ? "Shrink" : "Expand"));
+  const $mapStyle = createMemo(() =>
+    objToStyle({ width: "100%", "max-width": $large() ? "48rem" : "24rem" }),
+  );
 
-  const ExternalLink = (/** @type {{url: string}} */ props) => {
-    return h(
-      "a",
-      { href: () => props.url, target: "_blank", class: "text-base-content-primary" },
-      () => props.url,
-    );
-  };
+  function toggleLarge() {
+    $setLarge((v) => !v);
+  }
 
-  return h(
-    Show,
-    { when: () => props.code },
-    h("div", { class: "japanese-prefectures-map" }, [
-      h("div", {
-        innerHTML: $svg,
-        ref: $setSvgContainerRef,
-        style: () => objToStyle({ width: "100%", "max-width": $large() ? "48rem" : "24rem" }),
-      }),
-      h("div", { class: "japanese-prefectures-side" }, [
-        h(
-          "button",
-          { class: "btn btn-sm text-base-content-calm", onClick: () => $setLarge((v) => !v) },
-          () => $largeLabel(),
-        ),
-        h("div", { class: "flex flex-col gap-1 items-center" }, [
-          h(Show, { when: $hoverPrefecture }, (/** @type {() => Prefecture} */ name) =>
-            h("div", { class: "text-2xl text-base-content-calm" }, [
-              h("ruby", [name()[1], h("rt", name()[2])]),
-            ]),
-          ),
-          h(Show, { when: $hoverRegion }, (/** @type {() => string} */ region) =>
-            h("div", { class: "text-xl text-base-content-soft" }, [
-              h("ruby", [REGIONS[region()][0], h("rt", REGIONS[region()][1])]),
-            ]),
-          ),
-        ]),
-      ]),
-      h(
-        Portal,
-        { mount: () => $general.layoutRef },
-        h("dialog", { class: "modal", ref: $setDialogRef }, [
-          h("div", { class: "modal-box" }, [
-            h("div", { class: "flex flex-col gap-1" }, [
-              h("div", { class: "text-lg font-bold" }, () => $activePrefecture()?.[1]),
-              h(ExternalLink, {
-                url: () => `https://ja.wikipedia.org/wiki/${$activePrefecture()?.[1]}`,
-              }),
-              h(ExternalLink, {
-                url: () => `https://www.google.com/maps/search/${$activePrefecture()?.[1]}`,
-              }),
-              h(ExternalLink, {
-                url: () => `https://fudoki.app/prefecture/${$activePrefecture()?.[3]}`,
-              }),
-            ]),
-            h("div", { class: "modal-action" }, [
-              h("form", { method: "dialog" }, [h("button", { class: "btn" }, "Close")]),
-            ]),
-          ]),
-          h("form", { method: "dialog", class: "modal-backdrop" }, [h("button", "Close")]),
-        ]),
-      ),
-    ])(),
-  )();
+  function HoverPrefecture() {
+    return html`<div class="text-2xl text-base-content-calm">
+      <ruby>${$hoverKanji}<rt>${$hoverKana}</rt></ruby>
+    </div>`;
+  }
+
+  function HoverRegion() {
+    return html`<div class="text-xl text-base-content-soft">
+      <ruby>${$hoverRegionName}<rt>${$hoverRegionReading}</rt></ruby>
+    </div>`;
+  }
+
+  /**
+   * @param {{ url: string; }} props
+   */
+  function ExternalLink(props) {
+    const $url = createMemo(() => props.url);
+    return html`<a href=${$url} target="_blank" class="text-base-content-primary"> ${$url} </a>`;
+  }
+
+  return html`
+    <${Show} when=${$code}>
+      <div class="japanese-prefectures-map">
+        <div innerHTML=${$svg} ref=${$setSvgContainerRef} style=${$mapStyle}></div>
+        <div class="japanese-prefectures-side">
+          <button class="btn btn-sm text-base-content-calm" on:click=${toggleLarge}>
+            ${$largeLabel}
+          </button>
+          <div class="flex flex-col gap-1 items-center">
+            <${Show} when=${$hoverPrefecture}>
+              <${HoverPrefecture}><//>
+            <//>
+            <${Show} when=${$hoverRegion}>
+              <${HoverRegion}><//>
+            <//>
+          </div>
+        </div>
+        <${Portal} mount=${$layoutRef}>
+          <dialog class="modal" ref=${$setDialogRef}>
+            <div class="modal-box">
+              <div class="flex flex-col gap-1">
+                <div class="text-lg font-bold">${$activeKanji}</div>
+                <${ExternalLink} url=${$wikipediaUrl}><//>
+                <${ExternalLink} url=${$mapsUrl}><//>
+                <${ExternalLink} url=${$fudokiUrl}><//>
+              </div>
+              <div class="modal-action">
+                <form method="dialog"><button class="btn">Close</button></form>
+              </div>
+            </div>
+            <form method="dialog" class="modal-backdrop"><button>Close</button></form>
+          </dialog>
+        <//>
+      </div>
+    <//>
+  `;
 }
