@@ -1,15 +1,19 @@
 import type {
+  Accessor,
+  Component,
   createComputed,
   createContext,
   createEffect,
   createMemo,
   createResource,
   createSignal,
+  createUniqueId,
   ErrorBoundary,
   For,
   getOwner,
   lazy,
   Match,
+  on,
   onCleanup,
   onMount,
   runWithOwner,
@@ -22,7 +26,7 @@ import type {
 import type h from "solid-js/h";
 import type html from "solid-js/html";
 import type { JSX } from "solid-js/jsx-runtime";
-import type { createStore, Store } from "solid-js/store";
+import type { createStore, SetStoreFunction, Store, unwrap } from "solid-js/store";
 import type { Portal } from "solid-js/web";
 import type { UseKanjiContext } from "#/src/lazy/contexts/KanjiContext";
 import type { UseAnkiFieldContext } from "#/src/contexts/AnkiFieldsContext";
@@ -44,6 +48,7 @@ export type Ctx = {
   /**
    * HyperScript method for Solid
    * https://github.com/solidjs/solid/blob/main/packages/solid/h/README.md
+   * NOTE: this is buggy, use html`` instead https://github.com/solidjs/solid/issues/2453#issuecomment-4316501039
    */
   h: typeof h;
   /**
@@ -65,6 +70,15 @@ export type Ctx = {
   createComputed: typeof createComputed;
   /** Creates a deep-reactive proxy object. Useful for complex state. */
   createStore: typeof createStore;
+  /** Returns the raw, non-reactive value of a store. */
+  unwrap: typeof unwrap;
+  /** Generates a unique ID for use in element IDs, keys, etc. */
+  createUniqueId: typeof createUniqueId;
+  /**
+   * Specifies dependencies for an effect or memo, so it only re-runs when
+   * those tracked sources change. e.g. createEffect(on(source, fn))
+   */
+  on: typeof on;
 
   // --- Lifecycle Hooks ---
   /** Registers a function to run after the component is mounted to the DOM. */
@@ -233,3 +247,5 @@ export type KikuPlugin = {
    */
   glossaryImagesFilter?: (img: HTMLImageElement) => boolean;
 };
+
+export type { Accessor, Component, SetStoreFunction };
