@@ -1,4 +1,9 @@
 /**
+ * Type the Reading
+ *
+ * On the front of the card, prompts the user to type the reading of the
+ * expression. On the back, shows whether the typed reading was correct.
+ *
  * @import { KikuPlugin } from "#/plugins/plugin-types";
  */
 
@@ -18,24 +23,19 @@ function objToStyle(obj) {
 
 /** @type { KikuPlugin } */
 export const plugin = {
-  CardEnd: (props) => {
+  TopSectionEnd: (props) => {
     const {
       html,
       Show,
-      Switch,
-      Match,
-      Portal,
       createSignal,
       createEffect,
       createMemo,
       onMount,
       useAnkiFieldContext,
       useCardContext,
-      useGeneralContext,
     } = props.ctx;
     const { initialAnkiFields, $isInitialAnkiFields } = useAnkiFieldContext();
-    const { $general } = useGeneralContext();
-    const { $card, $initialSide } = useCardContext();
+    const { $card } = useCardContext();
 
     const cardId = initialAnkiFields.CardID;
     const expected = initialAnkiFields.ExpressionReading?.trim() ?? "";
@@ -43,18 +43,12 @@ export const plugin = {
     const [$value, $setValue] = createSignal("");
     const [$hasLoaded, $setHasLoaded] = createSignal(false);
     const [$inputRef, $setInputRef] = createSignal();
-    const [$sentenceFieldRef, $setSentenceFieldRef] = createSignal();
 
     onMount(() => {
       const saved = sessionStorage.getItem(`type-reading-${cardId}`);
       if (saved) $setValue(saved);
       $inputRef()?.focus();
       $setHasLoaded(true);
-    });
-
-    onMount(() => {
-      const sentenceFieldRef = $general.root?.querySelector("div:has(>.sentence-field)");
-      if (sentenceFieldRef) $setSentenceFieldRef(sentenceFieldRef);
     });
 
     createEffect(() => {
@@ -117,10 +111,6 @@ export const plugin = {
       }
     }
 
-    const $isFront = createMemo(() => $initialSide() === "front");
-    const $isBack = createMemo(() => $initialSide() === "back");
-    const $show = createMemo(() => $isInitialAnkiFields() && ($isFront() || $sentenceFieldRef()));
-
     const TypeReading = () => html`
       <div class="mt-2 flex flex-col items-center">
         <input
@@ -141,17 +131,8 @@ export const plugin = {
     `;
 
     return html`
-      <${Switch}>
-        <${Match} when=${$isBack}>
-          <${Show} when=${$show}>
-            <${Portal} mount=${$sentenceFieldRef}>
-              <${TypeReading}><//>
-            <//>
-          <//>
-        <//>
-        <${Match} when=${$isFront}>
-          <${TypeReading}><//>
-        <//>
+      <${Show} when=${$isInitialAnkiFields}>
+        <${TypeReading}><//>
       <//>
     `;
   },
