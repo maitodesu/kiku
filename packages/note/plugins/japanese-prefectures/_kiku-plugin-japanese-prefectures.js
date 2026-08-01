@@ -130,7 +130,7 @@ function findPrefectureByCode(code) {
  * @param {Record<string, string | number | boolean | null | undefined>} obj
  * @returns {string}
  */
-function objToStyle(obj) {
+function style(obj) {
   let s = "";
   for (const key in obj) {
     const v = obj[key];
@@ -169,6 +169,59 @@ async function fetchSvg() {
 }
 
 /**
+ * Wraps Solid's html tag so registered components can be written with normal
+ * closing tags.
+ *
+ * @param {typeof import("solid-js/html").default} html
+ * @param {Record<string, unknown>} components
+ */
+function defineHtml(html, components) {
+  const componentEntries = Object.entries(components).filter(([, component]) => component != null);
+  const componentByName = new Map(componentEntries);
+  const tagNames = componentEntries.map(([name]) => name).sort((a, b) => b.length - a.length);
+  const tagPattern = tagNames.join("|");
+  const openTagRe = new RegExp(`<(${tagPattern})(?=[\\s>/])`, "g");
+  const closeTagRe = new RegExp(`</(${tagPattern})>`, "g");
+
+  const marker = "\u0000";
+
+  /**
+   * @param {TemplateStringsArray} strings
+   * @param {...unknown} values
+   */
+  return (strings, ...values) => {
+    const statics = [];
+    const args = [];
+    for (let i = 0; i < strings.length; i += 1) {
+      let chunk = strings[i];
+
+      chunk = chunk.replace(openTagRe, (_, name) => `<${marker}${name}${marker}`);
+      chunk = chunk.replace(closeTagRe, "<//>");
+
+      for (let j = 0; j < chunk.length; ) {
+        const start = chunk.indexOf(marker, j);
+        if (start === -1) {
+          statics.push(chunk.slice(j));
+          break;
+        }
+
+        if (start > j) statics.push(chunk.slice(j, start));
+
+        const end = chunk.indexOf(marker, start + marker.length);
+        const name = chunk.slice(start + marker.length, end);
+        args.push(componentByName.get(name));
+        j = end + marker.length;
+      }
+
+      if (i < values.length) args.push(values[i]);
+    }
+
+    const template = Object.assign(statics, { raw: statics.slice() });
+    return html(/** @type {TemplateStringsArray} */ (template), ...args);
+  };
+}
+
+/**
  * @typedef {import("#/plugins/plugin-types").Ctx} Ctx
  */
 
@@ -176,7 +229,15 @@ async function fetchSvg() {
  * @param {{ ctx: Ctx; }} props
  */
 export function JapaneseMap(props) {
-  const { html, createMemo, Suspense, Show, useAnkiFieldContext, useCardContext } = props.ctx;
+  const {
+    html: _html,
+    createMemo,
+    Suspense,
+    Show,
+    useAnkiFieldContext,
+    useCardContext,
+  } = props.ctx;
+  const html = defineHtml(_html, { Show, Suspense, JapaneseMapContent });
   const { $initialSide } = useCardContext();
   const { $ankiFields } = useAnkiFieldContext();
 
@@ -196,11 +257,11 @@ export function JapaneseMap(props) {
   }
 
   return html`
-    <${Show} when=${$showMap}>
-      <${Suspense} fallback=${LoadingFallback}>
-        <${JapaneseMapContent} ctx=${props.ctx} code=${$code}><//>
-      <//>
-    <//>
+    <Show when=${$showMap}>
+      <Suspense fallback=${LoadingFallback}>
+        <JapaneseMapContent ctx=${props.ctx} code=${$code}></JapaneseMapContent>
+      </Suspense>
+    </Show>
   `;
 }
 
@@ -209,7 +270,7 @@ export function JapaneseMap(props) {
  */
 function JapaneseMapContent(props) {
   const {
-    html,
+    html: _html,
     createMemo,
     createEffect,
     createSignal,
@@ -219,6 +280,7 @@ function JapaneseMapContent(props) {
     Show,
     useGeneralContext,
   } = props.ctx;
+  const html = defineHtml(_html, { Show, Portal, HoverPrefecture, HoverRegion, ExternalLink });
   const { $general } = useGeneralContext();
 
   const $layoutRef = createMemo(() => $general.layoutRef);
@@ -241,7 +303,7 @@ function JapaneseMapContent(props) {
     const root = $svgContainerRef()?.querySelector("svg");
     if (!root) return;
     root.setAttribute("width", "100%");
-    root.setAttribute("style", objToStyle({ height: "auto", display: "block" }));
+    root.setAttribute("style", style({ height: "auto", display: "block" }));
   });
 
   const [$hoverCode, $setHoverCode] = createSignal(/** @type {string | null} */ (null));
@@ -344,7 +406,7 @@ function JapaneseMapContent(props) {
   const [$large, $setLarge] = createSignal(false);
   const $largeLabel = createMemo(() => ($large() ? "Shrink" : "Expand"));
   const $mapStyle = createMemo(() =>
-    objToStyle({ width: "100%", "max-width": $large() ? "48rem" : "24rem" }),
+    style({ width: "100%", "max-width": $large() ? "48rem" : "24rem" }),
   );
 
   function toggleLarge() {
@@ -372,7 +434,7 @@ function JapaneseMapContent(props) {
   }
 
   return html`
-    <${Show} when=${$code}>
+    <Show when=${$code}>
       <div class="japanese-prefectures-map">
         <div innerHTML=${$svg} ref=${$setSvgContainerRef} style=${$mapStyle}></div>
         <div class="japanese-prefectures-side">
@@ -380,22 +442,22 @@ function JapaneseMapContent(props) {
             ${$largeLabel}
           </button>
           <div class="flex flex-col gap-1 items-center">
-            <${Show} when=${$hoverPrefecture}>
-              <${HoverPrefecture}><//>
-            <//>
-            <${Show} when=${$hoverRegion}>
-              <${HoverRegion}><//>
-            <//>
+            <Show when=${$hoverPrefecture}>
+              <HoverPrefecture></HoverPrefecture>
+            </Show>
+            <Show when=${$hoverRegion}>
+              <HoverRegion></HoverRegion>
+            </Show>
           </div>
         </div>
-        <${Portal} mount=${$layoutRef}>
+        <Portal mount=${$layoutRef}>
           <dialog class="modal" ref=${$setDialogRef}>
             <div class="modal-box">
               <div class="flex flex-col gap-1">
                 <div class="text-lg font-bold">${$activeKanji}</div>
-                <${ExternalLink} url=${$wikipediaUrl}><//>
-                <${ExternalLink} url=${$mapsUrl}><//>
-                <${ExternalLink} url=${$fudokiUrl}><//>
+                <ExternalLink url=${$wikipediaUrl}></ExternalLink>
+                <ExternalLink url=${$mapsUrl}></ExternalLink>
+                <ExternalLink url=${$fudokiUrl}></ExternalLink>
               </div>
               <div class="modal-action">
                 <form method="dialog"><button class="btn">Close</button></form>
@@ -403,8 +465,8 @@ function JapaneseMapContent(props) {
             </div>
             <form method="dialog" class="modal-backdrop"><button>Close</button></form>
           </dialog>
-        <//>
+        </Portal>
       </div>
-    <//>
+    </Show>
   `;
 }
