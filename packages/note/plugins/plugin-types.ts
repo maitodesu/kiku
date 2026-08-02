@@ -54,8 +54,11 @@ export type Ctx = {
   /**
    * Tagged Template Literal html method for Solid
    * https://github.com/solidjs/solid/blob/main/packages/solid/html/README.md
+   * Includes a `.define()` method for registering custom components.
    */
-  html: typeof html;
+  html: typeof html & {
+    define(components: Record<string, unknown>): typeof html;
+  };
 
   // --- Solid.js Reactive Primitives ---
   /** Creates a reactive signal. [$state, $setState] = createSignal(initialValue) */

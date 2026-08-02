@@ -23,6 +23,7 @@ import html from "solid-js/html";
 import { createStore, unwrap } from "solid-js/store";
 import { Match, Portal, Show, Suspense, Switch } from "solid-js/web";
 import type { Ctx } from "#/plugins/plugin-types";
+import { defineHtml } from "#/src/lib/define-html";
 import { useAnkiFieldContext } from "./AnkiFieldsContext";
 import { useBreakpointContext } from "./BreakpointContext";
 import { useCardContext } from "./CardContext";
@@ -31,11 +32,16 @@ import { useGeneralContext } from "./GeneralContext";
 
 const CtxContext = createContext<Ctx>();
 
+const htmlWithDefine = Object.assign(
+  (...args: Parameters<typeof html>) => html(...args),
+  { define: (components: Record<string, unknown>) => defineHtml(html, components) },
+);
+
 export function CtxContextProvider(props: { children: JSX.Element }) {
   const { $ankiFields } = useAnkiFieldContext();
   const ctx: Ctx = {
     h,
-    html,
+    html: htmlWithDefine,
     createSignal,
     createEffect,
     createMemo,

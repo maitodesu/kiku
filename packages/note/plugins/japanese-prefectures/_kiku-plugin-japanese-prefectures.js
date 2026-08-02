@@ -178,59 +178,6 @@ async function fetchSvg() {
 }
 
 /**
- * Wraps Solid's html tag so registered components can be written with normal
- * closing tags.
- *
- * @param {typeof import("solid-js/html").default} html
- * @param {Record<string, unknown>} components
- */
-function defineHtml(html, components) {
-  const componentEntries = Object.entries(components).filter(([, component]) => component != null);
-  const componentByName = new Map(componentEntries);
-  const tagNames = componentEntries.map(([name]) => name).sort((a, b) => b.length - a.length);
-  const tagPattern = tagNames.join("|");
-  const openTagRe = new RegExp(`<(${tagPattern})(?=[\\s>/])`, "g");
-  const closeTagRe = new RegExp(`</(${tagPattern})>`, "g");
-
-  const marker = "\u0000";
-
-  /**
-   * @param {TemplateStringsArray} strings
-   * @param {...unknown} values
-   */
-  return (strings, ...values) => {
-    const statics = [];
-    const args = [];
-    for (let i = 0; i < strings.length; i += 1) {
-      let chunk = strings[i];
-
-      chunk = chunk.replace(openTagRe, (_, name) => `<${marker}${name}${marker}`);
-      chunk = chunk.replace(closeTagRe, "<//>");
-
-      for (let j = 0; j < chunk.length; ) {
-        const start = chunk.indexOf(marker, j);
-        if (start === -1) {
-          statics.push(chunk.slice(j));
-          break;
-        }
-
-        if (start > j) statics.push(chunk.slice(j, start));
-
-        const end = chunk.indexOf(marker, start + marker.length);
-        const name = chunk.slice(start + marker.length, end);
-        args.push(componentByName.get(name));
-        j = end + marker.length;
-      }
-
-      if (i < values.length) args.push(values[i]);
-    }
-
-    const template = Object.assign(statics, { raw: statics.slice() });
-    return html(/** @type {TemplateStringsArray} */ (template), ...args);
-  };
-}
-
-/**
  * @typedef {import("#/plugins/plugin-types").Ctx} Ctx
  */
 
@@ -238,15 +185,8 @@ function defineHtml(html, components) {
  * @param {{ ctx: Ctx; }} props
  */
 export function JapaneseMap(props) {
-  const {
-    html: _html,
-    createMemo,
-    Suspense,
-    Show,
-    useAnkiFieldContext,
-    useCardContext,
-  } = props.ctx;
-  const html = defineHtml(_html, { Show, Suspense, JapaneseMapContent });
+  const { createMemo, Suspense, Show, useAnkiFieldContext, useCardContext } = props.ctx;
+  const html = props.ctx.html.define({ Show, Suspense, JapaneseMapContent });
   const { $initialSide } = useCardContext();
   const { $ankiFields } = useAnkiFieldContext();
 
@@ -290,7 +230,7 @@ function JapaneseMapContent(props) {
     Show,
     useGeneralContext,
   } = props.ctx;
-  const html = defineHtml(_html, { Show, Portal, HoverPrefecture, HoverRegion, ExternalLink });
+  const html = _html.define({ Show, Portal, HoverPrefecture, HoverRegion, ExternalLink });
   const { $general } = useGeneralContext();
 
   const $layoutRef = createMemo(() => $general.layoutRef);
