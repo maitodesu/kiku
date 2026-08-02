@@ -35,6 +35,7 @@ import type { UseCardContext } from "#/src/contexts/CardContext";
 import type { UseConfigContext } from "#/src/contexts/ConfigContext";
 import type { UseGeneralContext } from "#/src/contexts/GeneralContext";
 import type { PitchInfo } from "#/src/lib/hatsuon";
+import type { style } from "#/src/lib/style";
 import type { AnkiFields } from "#/src/lib/types";
 
 /**
@@ -118,6 +119,10 @@ export type Ctx = {
   Switch: typeof Switch;
   /** A branch within a Switch component. */
   Match: typeof Match;
+
+  // --- Utilities ---
+  /** Converts an object of CSS properties into an inline style string. */
+  style: typeof style;
 
   // --- Anki Data & Bridge ---
   /**

@@ -131,23 +131,10 @@ function findPrefectureByCode(code) {
 }
 
 /**
- * @param {Record<string, string | number | boolean | null | undefined>} obj
- * @returns {string}
- */
-function style(obj) {
-  let s = "";
-  for (const key in obj) {
-    const v = obj[key];
-    if (v == null || v === false) continue;
-    s += `${key}: ${v}; `;
-  }
-  return s.trim();
-}
-
-/**
  * @param {string} svgText
+ * @param {Ctx["style"]} style
  */
-function processSvg(svgText) {
+function processSvg(svgText, style) {
   const doc = new DOMParser().parseFromString(svgText, "image/svg+xml");
   for (const el of doc.querySelectorAll(".prefecture")) {
     const region = Object.keys(CONFIG.regionColors).find((r) => el.classList.contains(r));
@@ -219,7 +206,6 @@ export function JapaneseMap(props) {
  */
 function JapaneseMapContent(props) {
   const {
-    html: _html,
     createMemo,
     createEffect,
     createSignal,
@@ -229,8 +215,9 @@ function JapaneseMapContent(props) {
     Portal,
     Show,
     useGeneralContext,
+    style,
   } = props.ctx;
-  const html = _html.define({ Show, Portal, HoverPrefecture, HoverRegion, ExternalLink });
+  const html = props.ctx.html.define({ Show, Portal, HoverPrefecture, HoverRegion, ExternalLink });
   const { $general } = useGeneralContext();
 
   const $layoutRef = createMemo(() => $general.layoutRef);
@@ -241,7 +228,7 @@ function JapaneseMapContent(props) {
   const $svg = createMemo(() => {
     const text = $$svg();
     if (!text) return null;
-    g.__japanesePrefecturesProcessedSvg ??= processSvg(text);
+    g.__japanesePrefecturesProcessedSvg ??= processSvg(text, style);
     return g.__japanesePrefecturesProcessedSvg;
   });
 

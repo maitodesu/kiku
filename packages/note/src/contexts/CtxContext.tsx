@@ -24,6 +24,7 @@ import { createStore, unwrap } from "solid-js/store";
 import { Match, Portal, Show, Suspense, Switch } from "solid-js/web";
 import type { Ctx } from "#/plugins/plugin-types";
 import { defineHtml } from "#/src/lib/define-html";
+import { style } from "#/src/lib/style";
 import { useAnkiFieldContext } from "./AnkiFieldsContext";
 import { useBreakpointContext } from "./BreakpointContext";
 import { useCardContext } from "./CardContext";
@@ -42,6 +43,7 @@ export function CtxContextProvider(props: { children: JSX.Element }) {
   const ctx: Ctx = {
     h,
     html: htmlWithDefine,
+    style,
     createSignal,
     createEffect,
     createMemo,
