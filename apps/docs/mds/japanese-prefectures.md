@@ -28,6 +28,6 @@ Map file:
 
 ## Features
 
-- The matched prefecture blinks to draw attention. Set `matchFill` in `CONFIG` to tint it, or `null` to keep its region color
+- The matched prefecture blinks to draw attention. Set `matchFill` in `CONFIG` to tint it.
 - Hovering a prefecture adjusts its brightness and shows the prefecture name and its region
 - Clicking a prefecture opens a dialog with links to various websites

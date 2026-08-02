@@ -8,10 +8,9 @@ import { JapaneseMap } from "./_kiku-plugin-japanese-prefectures.js";
  * @type { KikuPlugin }
  */
 export const plugin = {
-  Sentence: (props) => {
-    const { ctx, DefaultSentence } = props;
-    const { h } = ctx;
+  TopSectionEnd: (props) => {
+    const html = props.ctx.html.define({ JapaneseMap });
 
-    return [h(JapaneseMap, { ctx })(), DefaultSentence()];
+    return html`<JapaneseMap ctx=${props.ctx}></JapaneseMap>`;
   },
 };
