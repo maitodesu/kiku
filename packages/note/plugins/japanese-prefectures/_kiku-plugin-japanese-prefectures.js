@@ -7,19 +7,18 @@ const CONFIG = {
   defaultFill: "#EEEEEE",
   boundaryStroke: "#888888",
   matchFill: "#f97316",
-};
-
-/** @type {Record<string, string>} region class -> fill color */
-const REGION_COLORS = {
-  hokkaido: "#bfdbfe",
-  tohoku: "#c4b5fd",
-  kanto: "#fbcfe8",
-  chubu: "#fde68a",
-  kinki: "#bbf7d0",
-  chugoku: "#a5f3fc",
-  shikoku: "#d9f99d",
-  kyushu: "#fed7aa",
-  "kyushu-okinawa": "#fed7aa",
+  /** @type {Record<string, string>} region class -> fill color */
+  regionColors: {
+    hokkaido: "#bfdbfe",
+    tohoku: "#c4b5fd",
+    kanto: "#fbcfe8",
+    chubu: "#fde68a",
+    kinki: "#bbf7d0",
+    chugoku: "#a5f3fc",
+    shikoku: "#d9f99d",
+    kyushu: "#fed7aa",
+    "kyushu-okinawa": "#fed7aa",
+  },
 };
 
 /** @type {Record<string, [string, string]>} region class -> [name, reading] */
@@ -35,12 +34,17 @@ const REGIONS = {
   "kyushu-okinawa": ["九州・沖縄", "きゅうしゅう・おきなわ"],
 };
 
+const REGION_KEYS = new Set(Object.keys(REGIONS));
+
 /**
  * @param {Element} el
  * @returns {string | null}
  */
 function regionKeyOf(el) {
-  return Object.keys(REGIONS).find((r) => el.classList.contains(r)) ?? null;
+  for (const cls of el.classList) {
+    if (REGION_KEYS.has(cls)) return cls;
+  }
+  return null;
 }
 
 /**
@@ -146,12 +150,17 @@ function style(obj) {
 function processSvg(svgText) {
   const doc = new DOMParser().parseFromString(svgText, "image/svg+xml");
   for (const el of doc.querySelectorAll(".prefecture")) {
-    const region = Object.keys(REGION_COLORS).find((r) => el.classList.contains(r));
-    el.setAttribute("fill", region ? REGION_COLORS[region] : CONFIG.defaultFill);
+    const region = Object.keys(CONFIG.regionColors).find((r) => el.classList.contains(r));
+    el.setAttribute("fill", region ? CONFIG.regionColors[region] : CONFIG.defaultFill);
     el.setAttribute("stroke", CONFIG.boundaryStroke);
   }
   for (const el of doc.querySelectorAll(".boundary-line")) {
     el.setAttribute("stroke", CONFIG.boundaryStroke);
+  }
+  const root = doc.querySelector("svg");
+  if (root) {
+    root.setAttribute("width", "100%");
+    root.setAttribute("style", style({ height: "auto", display: "block" }));
   }
   return new XMLSerializer().serializeToString(doc);
 }
@@ -274,6 +283,7 @@ function JapaneseMapContent(props) {
     createMemo,
     createEffect,
     createSignal,
+    createStore,
     createResource,
     onCleanup,
     Portal,
@@ -299,17 +309,14 @@ function JapaneseMapContent(props) {
     /** @type {HTMLDivElement | null} - */ (null),
   );
 
-  createEffect(() => {
-    const root = $svgContainerRef()?.querySelector("svg");
-    if (!root) return;
-    root.setAttribute("width", "100%");
-    root.setAttribute("style", style({ height: "auto", display: "block" }));
+  const [$state, $setState] = createStore({
+    hoverCode: /** @type {string | null} */ (null),
+    hoverRegion: /** @type {string | null} */ (null),
+    activeCode: /** @type {string | null} */ (null),
+    large: false,
   });
 
-  const [$hoverCode, $setHoverCode] = createSignal(/** @type {string | null} */ (null));
-  const $hoverPrefecture = createMemo(() => findPrefectureByCode($hoverCode()));
-  const [$hoverRegion, $setHoverRegion] = createSignal(/** @type {string | null} */ (null));
-
+  const $hoverPrefecture = createMemo(() => findPrefectureByCode($state.hoverCode));
   const $hoverKanji = createMemo(() => $hoverPrefecture()?.[1]);
   const $hoverKana = createMemo(() => $hoverPrefecture()?.[2]);
   /** @param {string | null} region */
@@ -317,21 +324,9 @@ function JapaneseMapContent(props) {
     return region ? REGIONS[region] : null;
   }
 
-  const $hoverRegionInfo = createMemo(() => regionInfo($hoverRegion()));
+  const $hoverRegionInfo = createMemo(() => regionInfo($state.hoverRegion));
   const $hoverRegionName = createMemo(() => $hoverRegionInfo()?.[0]);
   const $hoverRegionReading = createMemo(() => $hoverRegionInfo()?.[1]);
-
-  const [$activeCode, $setActiveCode] = createSignal(/** @type {string | null} */ (null));
-  const $activePrefecture = createMemo(() => findPrefectureByCode($activeCode()));
-
-  const $activeKanji = createMemo(() => $activePrefecture()?.[1]);
-  const $wikipediaUrl = createMemo(
-    () => `https://ja.wikipedia.org/wiki/${$activePrefecture()?.[1]}`,
-  );
-  const $mapsUrl = createMemo(
-    () => `https://www.google.com/maps/search/${$activePrefecture()?.[1]}`,
-  );
-  const $fudokiUrl = createMemo(() => `https://fudoki.app/prefecture/${$activePrefecture()?.[3]}`);
 
   const [$dialogRef, $setDialogRef] = createSignal(/** @type {HTMLDialogElement | null} */ (null));
 
@@ -356,26 +351,26 @@ function JapaneseMapContent(props) {
     });
   });
 
-  /** @param {Event} e - */
+  /** @param {Event} e */
   function onHoverEnter(e) {
     const el = /** @type {SVGGElement} */ (e.currentTarget);
     el.classList.add("hover");
-    $setHoverCode(el.dataset.code ?? null);
-    $setHoverRegion(regionKeyOf(el));
+    $setState("hoverCode", el.dataset.code ?? null);
+    $setState("hoverRegion", regionKeyOf(el));
   }
 
-  /** @param {Event} e - */
+  /** @param {Event} e */
   function onHoverLeave(e) {
     const el = /** @type {SVGGElement} */ (e.currentTarget);
     el.classList.remove("hover");
-    $setHoverCode(null);
-    $setHoverRegion(null);
+    $setState("hoverCode", null);
+    $setState("hoverRegion", null);
   }
 
-  /** @param {Event} e - */
+  /** @param {Event} e */
   function onPrefectureClick(e) {
     const el = /** @type {SVGGElement} */ (e.currentTarget);
-    $setActiveCode(el.dataset.code ?? null);
+    $setState("activeCode", el.dataset.code ?? null);
     $dialogRef()?.showModal();
   }
 
@@ -403,16 +398,6 @@ function JapaneseMapContent(props) {
     });
   });
 
-  const [$large, $setLarge] = createSignal(false);
-  const $largeLabel = createMemo(() => ($large() ? "Shrink" : "Expand"));
-  const $mapStyle = createMemo(() =>
-    style({ width: "100%", "max-width": $large() ? "48rem" : "24rem" }),
-  );
-
-  function toggleLarge() {
-    $setLarge((v) => !v);
-  }
-
   function HoverPrefecture() {
     return html`<div class="text-2xl text-base-content-calm">
       <ruby>${$hoverKanji}<rt>${$hoverKana}</rt></ruby>
@@ -433,10 +418,29 @@ function JapaneseMapContent(props) {
     return html`<a href=${$url} target="_blank" class="text-base-content-primary"> ${$url} </a>`;
   }
 
+  const $largeLabel = createMemo(() => ($state.large ? "Shrink" : "Expand"));
+  const $svgContainerStyle = createMemo(() =>
+    style({ width: "100%", "max-width": $state.large ? "48rem" : "24rem" }),
+  );
+  function toggleLarge() {
+    $setState("large", (v) => !v);
+  }
+  const $hoverRegion = createMemo(() => $state.hoverRegion);
+
+  const $activePrefecture = createMemo(() => findPrefectureByCode($state.activeCode));
+  const $activeKanji = createMemo(() => $activePrefecture()?.[1]);
+  const $wikipediaUrl = createMemo(
+    () => `https://ja.wikipedia.org/wiki/${$activePrefecture()?.[1]}`,
+  );
+  const $mapsUrl = createMemo(
+    () => `https://www.google.com/maps/search/${$activePrefecture()?.[1]}`,
+  );
+  const $fudokiUrl = createMemo(() => `https://fudoki.app/prefecture/${$activePrefecture()?.[3]}`);
+
   return html`
     <Show when=${$code}>
       <div class="japanese-prefectures-map">
-        <div innerHTML=${$svg} ref=${$setSvgContainerRef} style=${$mapStyle}></div>
+        <div innerHTML=${$svg} ref=${$setSvgContainerRef} style=${$svgContainerStyle}></div>
         <div class="japanese-prefectures-side">
           <button class="btn btn-sm text-base-content-calm" on:click=${toggleLarge}>
             ${$largeLabel}
