@@ -18,7 +18,8 @@ const umamiScript: HeadConfig = [
 const isMainBranch = process.env.VERCEL_GIT_COMMIT_REF === "main";
 
 function getVersionFromBranch(branch: string): string {
-  const raw = execSync(`git show ${branch}:packages/note/package.json`, { encoding: "utf-8" });
+  execSync(`git fetch origin ${branch}`, { encoding: "utf-8" });
+  const raw = execSync(`git show origin/${branch}:packages/note/package.json`, { encoding: "utf-8" });
   return JSON.parse(raw).version;
 }
 
