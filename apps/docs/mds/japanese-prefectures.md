@@ -2,12 +2,12 @@
 outline: deep
 ---
 
-# Japanese Prefectures (WIP)
+# Japanese Prefectures
 
-Renders a map of Japan when the card's `Expression` or `ExpressionReading` is a Japanese prefecture.
+Renders an interactive map of Japan when the card's `Expression` or `ExpressionReading` is a Japanese prefecture.
 
 <video controls playsinline width="100%">
-  <source src="https://i.imgur.com/KdW3lKZ.mp4" type="video/mp4">
+  <source src="https://i.imgur.com/k9WbX87.mp4" type="video/mp4">
 </video>
 
 ## Setup
@@ -18,7 +18,7 @@ Copy the plugin files into your `collection.media` directory.
 
 <!-- prettier-ignore -->
 <<< ../../../packages/note/plugins/japanese-prefectures/_kiku_plugin.js [_kiku_plugin.js]
-<<< ../../../packages/note/plugins/japanese-prefectures/_kiku_plugin.css [_kiku_plugin.css]
+<<< ../../../packages/note/plugins/japanese-prefectures/_kiku-plugin-japanese-prefectures.css [_kiku-plugin-japanese-prefectures.css]
 <<< ../../../packages/note/plugins/japanese-prefectures/_kiku-plugin-japanese-prefectures.js [_kiku-plugin-japanese-prefectures.js]
 :::
 
@@ -28,6 +28,23 @@ Map file:
 
 ## Features
 
-- The matched prefecture blinks to draw attention. Set `matchFill` in `CONFIG` to tint it.
-- Hovering a prefecture adjusts its brightness and shows the prefecture name and its region
-- Clicking a prefecture opens a dialog with links to various websites
+### Front Side
+
+- Shows only the map with no labels
+- Click a prefecture to store your answer in `sessionStorage` and flip the card (uses `pycmd`, so this only works on Anki desktop)
+
+### Back Side
+
+- Shows the result with the full map
+- Correct answer is highlighted in green
+- Wrong answer is highlighted in red
+- Clicking a prefecture opens a dialog with external links
+
+## Supported Formats
+
+The plugin matches prefectures by:
+
+- Full kanji name (e.g., `東京都`)
+- Shortened kanji (e.g., `東京`)
+- Kana reading (e.g., `とうきょう`)
+- Romaji (e.g., `tokyo`)
