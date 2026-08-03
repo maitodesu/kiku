@@ -31,6 +31,7 @@ export const paths = {
 
   "@/.vitepress/dist/":                       p(".vitepress/dist/"),
 
+  "@note/package.json":                       n("package.json"),
   "@note/dist/_kiku.css":                     n("dist/_kiku.css"),
   "@note/dist/_kiku.js":                      n("dist/_kiku.js"),
   "@note/dist/_kiku_lazy.js":                 n("dist/_kiku_lazy.js"),

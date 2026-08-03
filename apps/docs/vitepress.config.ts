@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import vueJsx from "@vitejs/plugin-vue-jsx";
 import { defineConfig, type HeadConfig } from "vitepress";
 import { vitePluginCopyKikuAssets } from "./tools/vite-plugin-copy-kiku-assets";
@@ -12,7 +13,17 @@ const umamiScript: HeadConfig = [
   },
 ];
 
-// TODO: PURE annotation to avoid Rollup warning https://github.com/vueuse/vueuse/pull/5388
+// TODO: PURE annotation to avoid Rollup warning https://github.com/vuejs/vueuse/pull/5388
+
+const isMainBranch = process.env.VERCEL_GIT_COMMIT_REF === "main";
+
+function getVersionFromBranch(branch: string): string {
+  const raw = execSync(`git show ${branch}:packages/note/package.json`, { encoding: "utf-8" });
+  return JSON.parse(raw).version;
+}
+
+const kikuVersionMain = getVersionFromBranch("main");
+const kikuVersionDev = getVersionFromBranch("dev");
 
 export default defineConfig({
   vue: {
@@ -38,7 +49,22 @@ export default defineConfig({
   },
   themeConfig: {
     lastUpdated: {},
-    nav: [{ text: "Home", link: "/" }],
+    nav: [
+      { text: "Home", link: "/" },
+      {
+        text: isMainBranch ? kikuVersionMain : kikuVersionDev,
+        items: [
+          {
+            text: isMainBranch ? kikuVersionDev : kikuVersionMain,
+            link: isMainBranch
+              ? "https://dev.kiku.youyoumu.my.id?_vercel_share=gG1YI5jKfR6YL3wxLu4OJxIVu9p2NKML"
+              : "https://kiku.youyoumu.my.id",
+          },
+          { text: "Issues", link: "https://github.com/youyoumu/kiku/issues" },
+          { text: "Releases", link: "https://github.com/youyoumu/kiku/releases" },
+        ],
+      },
+    ],
     sidebar: [
       {
         text: "Getting Started",
