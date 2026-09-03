@@ -2,6 +2,7 @@ type Token =
   | { type: "kanji"; value: string }
   | { type: "kana"; value: string }
   | { type: "furigana"; value: string }
+  | { type: "html"; value: string }
   | { type: "space" };
 
 const isKanji = (char: string) => /\p{Script=Han}/u.test(char);
@@ -14,6 +15,26 @@ function tokenize(input: string): Token[] {
 
   while (i < chars.length) {
     const char = chars[i];
+
+    // An HTML tag passes through untouched. Without this every character of a
+    // tag is classified as kana and printed literally, so a field can never
+    // carry both markup and readings.
+    if (char === "<") {
+      let value = "";
+
+      while (i < chars.length && chars[i] !== ">") {
+        value += chars[i];
+        i++;
+      }
+
+      if (chars[i] === ">") {
+        value += chars[i];
+        i++;
+      }
+
+      tokens.push({ type: "html", value });
+      continue;
+    }
 
     if (char === "[") {
       let value = "";
@@ -75,6 +96,16 @@ function tokensToRenderItems(tokens: Token[]): FuriganaRenderItem[] {
 
   for (const token of tokens) {
     switch (token.type) {
+      case "html": {
+        // Emitted where it stands. A tag ends whatever run precedes it, so a
+        // reading must not be separated from its word by one: wrap the pair
+        // together (<span>言[い]</span>), not the word alone (<span>言</span>[い]).
+        textBuffer += mixedBuffer + token.value;
+        mixedBuffer = "";
+        kanjiBuffer = "";
+        break;
+      }
+
       case "space": {
         flushMixedAsText();
         textBuffer += " ";

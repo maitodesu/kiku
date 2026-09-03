@@ -156,4 +156,27 @@ describe("parseFurigana", () => {
     const result = parseFurigana(input);
     expect(result).toEqual([{ type: "ruby", text: "𬵪𩶗𫒼𣶏", reading: "よみ" }]);
   });
+
+  it("passes HTML through and still pairs readings", () => {
+    const result = parseFurigana('<span style="background:red">言[い]</span>われた');
+
+    expect(result).toContainEqual({ type: "ruby", text: "言", reading: "い" });
+    const text = result
+      .filter((item) => item.type === "text")
+      .map((item) => item.text)
+      .join("");
+    expect(text).toContain('<span style="background:red">');
+    expect(text).toContain("</span>");
+    expect(text).toContain("われた");
+  });
+
+  it("does not treat tag characters as kana", () => {
+    const result = parseFurigana("<b>x</b>");
+    const text = result
+      .filter((item) => item.type === "text")
+      .map((item) => item.text)
+      .join("");
+
+    expect(text).toBe("<b>x</b>");
+  });
 });

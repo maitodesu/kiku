@@ -76,9 +76,6 @@
       color: var(--color-pitch, var(--color-base-content-primary));
     }
     ruby rt {
-      visibility: hidden;
-    }
-    ruby:hover rt {
       visibility: visible;
     }
   }
