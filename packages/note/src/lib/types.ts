@@ -13,6 +13,7 @@ export type AnkiFields = {
   Sentence: string;
   SentenceFurigana: string;
   SentenceAudio: string;
+  SentenceVideo: string;
   SentenceTranslation: string;
   Picture: string;
   Glossary: string;
@@ -119,6 +120,7 @@ export const ankiFieldsSkeleton: AnkiFields = {
   SentenceFurigana: "",
   SentenceTranslation: "",
   SentenceAudio: "",
+  SentenceVideo: "",
   Picture: "",
   Glossary: "",
   Hint: "",
