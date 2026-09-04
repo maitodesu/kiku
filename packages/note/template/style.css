@@ -183,3 +183,48 @@ body:not([data-sveltekit-preload-data]) ::-webkit-scrollbar-thumb:hover {
 #qa {
   opacity: 1 !important;
 }
+
+/* ───────────────────── subs2anki: type and depth ───────────────────── */
+@layer custom {
+  /* A readable gothic on every platform Anki runs on, named in order of who
+     has it. No web font: a card has to render offline, and a missing download
+     falls back to whatever the OS picks, which is how a deck ends up in
+     Times New Roman. */
+  :root,
+  #kiku-root {
+    --font-primary:
+      "Yu Gothic UI", "Yu Gothic", YuGothic, "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+      "Noto Sans JP", "Noto Sans CJK JP", Meiryo, "Segoe UI", Roboto, system-ui, sans-serif;
+    --font-secondary:
+      "Yu Gothic", YuGothic, "Hiragino Mincho ProN", "Noto Serif JP", "Yu Mincho",
+      "MS Mincho", serif;
+  }
+
+  /* Depth on the headword only. It is one large glyph with room around it, so a
+     shadow reads as lift; the same effect on the sentence would smear body text
+     and, worse, the ruby sitting directly above it. Three layers: two tight and
+     opaque for the edge, one wide and soft for the ambient shadow under it. */
+  #kiku-root .expression {
+    text-shadow:
+      0 1px 0 rgba(0, 0, 0, 0.14),
+      0 2px 0 rgba(0, 0, 0, 0.10),
+      0 4px 10px rgba(0, 0, 0, 0.22);
+  }
+
+  /* Dark themes need the near layers lighter, not darker: a black edge on a
+     dark ground is invisible and only the blur survives, which reads as a
+     smudge rather than depth. */
+  #kiku-root[data-theme="dark"] .expression,
+  .nightMode #kiku-root .expression {
+    text-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.10),
+      0 2px 6px rgba(0, 0, 0, 0.55),
+      0 6px 16px rgba(0, 0, 0, 0.40);
+  }
+
+  /* The sentence stays flat and gains breathing room instead. Legibility of the
+     line being read matters more than any effect on it. */
+  #kiku-root .sentence-field {
+    letter-spacing: 0.01em;
+  }
+}
