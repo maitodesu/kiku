@@ -24,13 +24,6 @@ This file is auto-generated. Any manual changes will be lost on save.
   <!-- SSR_TEMPLATE -->
 </div>
 
-<!-- subs2anki: the segment's video clip, rendered by Anki itself so it stays
-     outside the note's own layout and needs no component of its own. -->
-{{#SentenceVideo}}
-<div id="subs2anki-video" style="margin:0.75em auto;max-width:640px;text-align:center">
-  {{SentenceVideo}}
-</div>
-{{/SentenceVideo}}
 
 <link rel="stylesheet" href="_kiku.css" id="kiku-css" />
 <link rel="stylesheet" href="_kiku_plugin.css" id="kiku-css-plugin" />
@@ -50,7 +43,6 @@ This file is auto-generated. Any manual changes will be lost on save.
   {{#IsAudioCard}}
   <template data-field="ExpressionAudio"></template>
   <template data-field="SentenceAudio">{{SentenceAudio}}</template>
-  <template data-field="SentenceVideo">{{SentenceVideo}}</template>
   {{/IsAudioCard}} {{^IsAudioCard}}
   <template data-field="ExpressionAudio"></template>
   <template data-field="SentenceAudio"></template>
